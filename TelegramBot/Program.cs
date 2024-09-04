@@ -14,13 +14,13 @@ using System.Configuration;
 
 public class Program
 {
-    // Это клиент для работы с Telegram Bot API, который позволяет отправлять сообщения, управлять ботом, подписываться на обновления и многое другое.
+    // Это клиент для работы с Telegram Bot API.
     private static ITelegramBotClient _botClient;
 
-    // Это объект с настройками работы бота. Здесь мы будем указывать, какие типы Update мы будем получать, Timeout бота и так далее.
+    // Это объект с настройками работы бота.
     private static ReceiverOptions _receiverOptions;
 
-    // Это словарь, хранящий последнее действие каждого из пользователей
+    // Это словарь, хранящий последнее действие каждого из пользователей.
     private static Dictionary<long, string> _history;
 
     // 
@@ -66,7 +66,9 @@ public class Program
                     {
                         var text = "";
                         var isCommand = true;
+                        // Обработчик команд
                         (text, isCommand) = await _functions.Command(message, _history);
+                        // Отправка ответа пользователю
                         _ = botClient.SendTextMessageAsync(
                             chatId: message.Chat.Id,
                             text: text
@@ -79,20 +81,19 @@ public class Program
         }
         catch (Exception ex)
         {
+            // Перехват непредвиденной ошибки
             Console.WriteLine(ex.ToString());
         }
     }
 
     private static Task ErrorHandler(ITelegramBotClient botClient, Exception error, CancellationToken cancellationToken)
     {
-        // Тут создадим переменную, в которую поместим код ошибки и её сообщение 
         var ErrorMessage = error switch
         {
             ApiRequestException apiRequestException
                 => $"При обращении к Telegram API произошла ошибка:\n[{apiRequestException.ErrorCode}]\n{apiRequestException.Message}",
             _ => $"Ошибка при исполнении: {error}"
         };
-
         Console.WriteLine(ErrorMessage);
         return Task.CompletedTask;
     }

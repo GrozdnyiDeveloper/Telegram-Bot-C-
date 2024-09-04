@@ -53,9 +53,11 @@ namespace TelegramBot
                     {
                         if (Int64.TryParse(inn, out _))
                         {
+                            // Отправка запроса к API
                             HttpResponseMessage response = SendRequest("https://api.checko.ru/v2/", $"company?key={ConfigurationManager.AppSettings["CheckoApiKey"]}&inn={inn}");
                             if (response.IsSuccessStatusCode)
                             {
+                                // Получение JSON строки
                                 string jsonString = await response.Content.ReadAsStringAsync();
                                 var json = JObject.Parse(jsonString);
                                 if (message.Text.ToLower().Contains("/inn"))
