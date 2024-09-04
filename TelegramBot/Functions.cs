@@ -38,7 +38,8 @@ namespace TelegramBot
                         "/help – вывести справку о доступных командах\n" +
                         "/hello – вывести ваше имя и фамилию, ваш email и ссылку на github\n" +
                         "/inn – получить наименования и адреса компаний по ИНН\n" +
-                        "/last – повторить последнее действие бота";
+                        "/last – повторить последнее действие бота\n" + "" +
+                        "/okved - получить коды (ОКВЭД) и виды деятельности компании по ИНН";
                     break;
 
                 case "/hello":
@@ -47,7 +48,7 @@ namespace TelegramBot
                         "Github: https://github.com/GrozdnyiDeveloper";
                     break;
 
-                case not null when message.Text.ToLower().Contains("/inn"):
+                case not null when message.Text.ToLower().Contains("/inn") || message.Text.ToLower().Contains("/okved"):
                     foreach (var inn in message.Text.ToLower().Split(" "))
                     {
                         if (Int64.TryParse(inn, out _))
@@ -57,16 +58,31 @@ namespace TelegramBot
                             {
                                 string jsonString = await response.Content.ReadAsStringAsync();
                                 var json = JObject.Parse(jsonString);
-                                string adresses = "";
-                                foreach (var obj in json.SelectTokens("data.Подразд.Филиал[*]"))
+                                if (message.Text.ToLower().Contains("/inn"))
                                 {
-                                    adresses += "* Название: " + obj.SelectToken("НаимПолн") + ", Адрес: " + obj.SelectToken("Адрес") + "; \n";
+                                    string adresses = "";
+                                    foreach (var obj in json.SelectTokens("data.Подразд.Филиал[*]"))
+                                    {
+                                        adresses += $"* Название: {obj.SelectToken("НаимПолн")}, Адрес: {obj.SelectToken("Адрес")}; \n";
+                                    }
+                                    adresses = adresses == "" ? "* Отсутствуют" : adresses;
+                                    text += $"Введённый ИНН: {json.SelectToken("data.ИНН")}\n" +
+                                        $"Полное наименование: {json.SelectToken("data.НаимПолн")}\n" +
+                                        $"Юридический адрес: {json.SelectToken("data.ЮрАдрес.АдресРФ")}\n" +
+                                        $"Филиалы: \n{adresses}\n\n";
+                                } 
+                                else
+                                {
+                                    string okveds = "";
+                                    foreach (var obj in json.SelectTokens("data.ОКВЭДДоп[*]").OrderByDescending(x => x.SelectToken("Наим")))
+                                    {
+                                        okveds += $"* {obj.SelectToken("Код")} {obj.SelectToken("Наим")}; \n";
+                                    }
+                                    okveds = okveds == "" ? "* Отсутствуют" : okveds;
+                                    text += $"Введённый ИНН: {json.SelectToken("data.ИНН")}\n" +
+                                        $"Основная деятельность: {json.SelectToken("data.ОКВЭД.Код")} {json.SelectToken("data.ОКВЭД.Наим")}\n" +
+                                        $"Дополнительная деятельность: \n{okveds}\n\n";
                                 }
-                                adresses = adresses == "" ? "* Отсутствуют" : adresses;
-                                text += $"Введённый ИНН: {json.SelectToken("data.ИНН")}\n" +
-                                    $"Полное наименование: {json.SelectToken("data.НаимПолн")}\n" +
-                                    $"Юридический адрес: {json.SelectToken("data.ЮрАдрес.АдресРФ")}\n" +
-                                    $"Филиалы: \n{adresses}\n\n";
                             }
                             else
                             {
@@ -76,13 +92,17 @@ namespace TelegramBot
                         }
                     }
                     text = (text == "" ? "Номер ИНН компании не был введён.\n" +
-                        "Повторите запрос, введя ИНН после команды (/inn <ИНН номер>)." : text);
+                        "Повторите запрос, введя ИНН после команды (/inn <ИНН номер> или /okved <ИНН номер>)." : text);
                     break;
 
                 case "/last":
-                    message.Text = history[message.From.Id];
-                    (text, isCommand) = await Command(message, history);
-                    return (text, isCommand);
+                    if (history.ContainsKey(message.From.Id))
+                    {
+                        message.Text = history[message.From.Id];
+                        (text, isCommand) = await Command(message, history);
+                        return (text, isCommand);
+                    }
+                    break;
 
                 default:
                     text = "Это сообщение не является одной из предусмотренных команд.\n" +
